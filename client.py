@@ -105,19 +105,23 @@ def start_client() -> None:
     ).upper()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-        client_socket.connect((HOST, PORT))  # Connects to the server
+        try:
+            client_socket.connect((HOST, PORT))  # Connects to the server
+        except ConnectionRefusedError:
+            print("Could not connect to server. Check that server is running.")
+            client_socket.close()
+        else:
+            # Creates and starts a thread to receive messages from the server
+            receive_thread = threading.Thread(target=receive_messages, args=(client_socket, username))
+            receive_thread.start()
 
-        # Creates and starts a thread to receive messages from the server
-        receive_thread = threading.Thread(target=receive_messages, args=(client_socket, username))
-        receive_thread.start()
+            # Creates and starts a thread to send messages to the server
+            send_thread = threading.Thread(target=send_messages, args=(client_socket, username))
+            send_thread.start()
 
-        # Creates and starts a thread to send messages to the server
-        send_thread = threading.Thread(target=send_messages, args=(client_socket, username))
-        send_thread.start()
-
-        # Waits for both threads to finish before the main thread continues
-        send_thread.join()
-        receive_thread.join()
+            # Waits for both threads to finish before the main thread continues
+            send_thread.join()
+            receive_thread.join()
 
 
 if __name__ == "__main__":
