@@ -5,7 +5,7 @@ from colorama import Fore
 import time
 
 HOST = "127.0.0.1"
-PORT = 55610
+PORT = 55614
 
 # Dictionary with colors for the prints
 colors: dict[str, str] = {

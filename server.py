@@ -1,15 +1,14 @@
 import socket
 import threading
 import time
-from typing import Any
 
 HOST = "127.0.0.1"
-PORT = 55610
+PORT = 55614
 
 # List stores all clients connected to the server
 clients = []
 
-# Dictionary that logs the time of latest activity by a client
+# Dictionary that logs the latest activity time of each client
 latest_activity = {}
 
 # Threading lock used for safer handling of the 'clients' list and 'latest_activity' dict
@@ -31,24 +30,23 @@ def broadcast(message, exclude_socket=None) -> None:
             if client != exclude_socket:
                 try:
                     client.send(message)
-                    print(f"Sent {message} to {client}")
                 except BrokenPipeError:
                     remove_client(client)
 
 
 def start_server() -> None:
-    """Starts the server and initiates incoming connections."""
+    """Starts the server and and accepts new client connections."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind((HOST, PORT))  # Binds the server to local host
-        server_socket.listen()  # Pauses all execution until incoming requests from clients are received
+        server_socket.listen()  # Enables server to accept incoming client connections
         print(f"Server listening on socket address {HOST}:{PORT}")
 
-        # Creates and starts the idle time thread for each socket that keeps track of all clients idle times
+        # Creates and starts the idle time thread to check for idle clients
         idle_time_thread = threading.Thread(target=check_idle_time)
         idle_time_thread.start()
 
         while True:
-            # Returns a tuple containing client socket and address
+            # Retrieve client socket and address
             client_socket, client_addr = server_socket.accept()
             print(f"Connected with {str(client_addr)}")
 
@@ -127,6 +125,9 @@ def check_idle_time() -> None:
 
 def remove_client(client_socket) -> None:
     """Removes a client and its username from the 'clients' and 'usernames' lists."""
+
+    username = ""
+
     with clients_lock:
         if client_socket in clients:
             try:
@@ -138,11 +139,14 @@ def remove_client(client_socket) -> None:
                 del latest_activity[client_socket]  # Removes the idle time logging data from 'latest_activity' dict
                 client_socket.close()  # Closes the socket
 
-                # Informs all other clients that the user has disconnected from the server in red color
-                print(f"Broadcasting message: 'User '{username}' just left the chat!'")
-                # broadcast(f"RED!\n'{username}' just left the chat!\n".encode("utf-8"))
             except ValueError:
                 print("Client already removed")
+
+    # Broadcasts that user has left the chat after the lock has been released (to avoid deadlock)
+    if username:
+        print(f"Broadcasting message: 'User '{username}' just left the chat!'")
+        # Informs all other clients that the user has disconnected from the server in red color
+        broadcast(f"RED!\n'{username}' just left the chat!\n".encode("utf-8"))
 
 
 if __name__ == "__main__":
