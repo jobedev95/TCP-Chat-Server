@@ -114,7 +114,7 @@ def check_idle_time() -> None:
                 idle_time = time.time() - latest_activity[client]
 
                 # Appends client to removal list if idle for more than two minutes
-                if idle_time > 7:
+                if idle_time > 120:
                     client.send("IDLE_TIMEOUT".encode("utf-8"))
                     clients_to_remove.append(client)
 
